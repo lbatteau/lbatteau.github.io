@@ -4,7 +4,7 @@
   <title><![CDATA[My Octopress Blog]]></title>
   <link href="http://lbatteau.github.io/atom.xml" rel="self"/>
   <link href="http://lbatteau.github.io/"/>
-  <updated>2015-12-18T15:45:52-05:00</updated>
+  <updated>2015-12-19T05:09:21-05:00</updated>
   <id>http://lbatteau.github.io/</id>
   <author>
     <name><![CDATA[Your Name]]></name>
@@ -14,835 +14,173 @@
 
   
   <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-9/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-9</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
+    <title type="html"><![CDATA[Expandable Fields in REST APIs]]></title>
+    <link href="http://lbatteau.github.io/blog/2015/12/18/expandable-fields-for-django-rest-framework/"/>
+    <updated>2015-12-18T15:50:13-05:00</updated>
+    <id>http://lbatteau.github.io/blog/2015/12/18/expandable-fields-for-django-rest-framework</id>
+    <content type="html"><![CDATA[<h2>To include or not to include? That&rsquo;s the question.</h2>
 
-<p>Some code:</p>
+<p>When creating a RESTful API web service, there always comes a point where you have to decide on how to deal with a related field. You can choose to return the related object nested within the parent, or to only include the reference, by which a client can retrieve it.</p>
 
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
+<p>In this article I would like to demonstrate an approach that I have started using, that does not rule out either one of the above options, but lets the client decide based on its requirements. I call them <em>expandable fields</em>.</p>
+
+<h2>An example</h2>
+
+<p>Let&rsquo;s look at an example first. For my latest project I have been working on an app that displays a list of upcoming meetings. A meeting has several related fields: the <code>owner</code>, a <code>location</code>, and a list of <code>invitations</code>. Here is a sample JSON response, using simple references for the related fields:</p>
+
+<pre><code>[
+    {
+        "id": 1,
+        "start": 1448406000.0,
+        "end": 1448407800.0,
+        "title": "Drinks",
+        "owner": 27,
+        "location": 5,
+        "invitations": [4, 32]
+    },
+    ...
+]
 </code></pre>
 
-<!-- More -->
+<p>And here is a sample response, with the referenced objects included:</p>
 
-
-<h2>Some more code</h2>
-
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
+<pre><code>[
+    {
+        "id": "1",
+        "title": "Drinks",
+        "start": 1448406000.0,
+        "end": 1448407800.0,
+        "owner": {
+            "id": 27,
+            "first_name": "Lukas",
+            "last_name": "Batteau"
+        },
+        "location": {
+            "id": 5,
+            "name": "Coffee Bar",
+            "address": "39 Street",
+            "city": "Utrecht"
+        },
+        "invitations": [
+            {
+                "id": 4
+                etc...
+            }
+        ]
+    },
+    ...
+]
 </code></pre>
 
-<h2>this is a sample header</h2>
+<p>Both types of responses have advantages and disadvantages, most of which will be obvious. Including only references is <em>lean and mean</em>, but the client will need extra requests to retrieve the related objects, leading to a lot of chatter. Including the objects makes it easier for the client, but the request will be slower, and can lead to a lot of bandwidth going completely unused.</p>
 
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
+<p>So what if you need nested objects <em>only sometimes</em>?</p>
 
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-8/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-8</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
+<h2>Why decide?</h2>
 
-<p>Some code:</p>
+<p>It really depends on the client&rsquo;s needs which of the two options to go for. If the screens are directly tied in with certain endpoints, then the data requirements of those screens should dictate what to retrieve and how much of it. For instance, in the unlikely case that the list only shows the meeting name, all you need is the first option. In the more realistic case that a lot of meeting details are displayed in the list, like showing the number of participants, you will need option two.</p>
 
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
+<p>In my experience an app will display the same objects in different ways over different screens, depending on the use case for that particular screen.</p>
+
+<p>In any case, it would be nice if we could control the response as required by the client. If the client could specify which related fields should be retrieved and included in the response, that would give us the power to save extra requests, or minimize the response payload, as needed.</p>
+
+<h2>Enters the query parameter</h2>
+
+<p>One way to control the API response, is to add a query parameter <code>expand</code> to the request. By specifying fields you would like to expand, you can ask the server to retrieve the related fields and include the objects in the response.</p>
+
+<p>For instance, <code>http://api.example.com/meetings?expand=owner,location</code> would give the following response:</p>
+
+<pre><code>[
+    {
+        "id": "1",
+        "title": "Drinks",
+        "start": 1448406000.0,
+        "end": 1448407800.0,
+        "owner": {
+            "id": 27,
+            "first_name": "Lukas",
+            "last_name": "Batteau"
+        },
+        "location": {
+            "id": 5,
+            "name": "Coffee Bar",
+            "address": "39 Street",
+            "city": "Utrecht"
+        },
+        "invitations": [4, 32]
+    },
+    ...
+]
 </code></pre>
 
-<!-- More -->
+<p>In the same way, any other related field can be included or not, as requested. By requesting all of them, we end up with option two. By requesting none, we&rsquo;re back to option one. We&rsquo;re free to choose any combination in between, meeting the client&rsquo;s demands, but making sure no resources or bandwidth are used in vain.</p>
 
+<h2>We&rsquo;re not there yet</h2>
 
-<h2>Some more code</h2>
+<p>Of course, this approach has consequences that require some extra thinking.</p>
 
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
+<h3>Maximum depth</h3>
+
+<p>Whenever anything&rsquo;s nested, there can be recursive cycles. Nested objects can include references to the parent object. It is possible that both the parent and the child are to be expanded, leading to infinite recursion. We have to make sure that a maximum depth is respected, below which only expansion of fields is disabled.</p>
+
+<h3>Uniform data mapping</h3>
+
+<p>So what if the client is using a data mapper, converting the response JSON objects into native class instances that can be used in the client&rsquo;s code. We don&rsquo;t want the format of the response objects to structurally differ, depending on whether fields are expanded or not. Having the same field contain an integer representing a reference one way, or a JSON object the other way, will require way too much client side customization.</p>
+
+<p>So instead of returning the reference as an integer, we return an object, just like the expanded version. Only this time the object only contains one field, the ID:</p>
+
+<pre><code>[
+    {
+        "id": "1",
+        "title": "Drinks",
+        "start": 1448406000.0,
+        "end": 1448407800.0,
+        "owner": {
+            "id": 27,
+            "first_name": "Lukas",
+            "last_name": "Batteau"
+        },
+        "location": {
+                "id": 5
+        },
+        "invitations": [
+            {
+                "id": 4
+            }, 
+            {
+                "id": 32
+            }
+        ]
+    },
+    ...
+]
 </code></pre>
 
-<h2>this is a sample header</h2>
+<p>This way the client data mapper will have no problem converting it into a native class instance. All it needs to do is retrieve the object details when they are needed.</p>
 
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
+<h3>Nested writes</h3>
 
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-7/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-7</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
+<p>If the client can retrieve nested objects, what about creating objects or changing them? The problem with nested writes is that they can be ambiguous.</p>
 
-<p>Some code:</p>
+<p>Let&rsquo;s take a look at an example, where the client is creating a new meeting by doing a POST of a meeting, with the location data nested in the meeting data. There are two ways for the API to handle the location:</p>
 
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
-</code></pre>
+<ul>
+<li>If the location does not already exist, the API should create it using the passed data, and set the reference on the meeting object.</li>
+<li>If the location does already exist, all the API has to do is set the reference. But there&rsquo;s a catch. What if the location data has changed in the mean time? It could be external data, Shouldn&rsquo;t it be updated in the process?</li>
+</ul>
 
-<!-- More -->
 
+<p>Given the above, the API should mimick either a POST or a PUT of the location, depending on whether it exists. Obviously it will need an ID to determine this. So if the included data contains an ID, a PUT is mimicked. If not, a POST.</p>
 
-<h2>Some more code</h2>
+<p>One advantage of nested writes is that the creation or update of a meeting will happen in one request, making the error handling a lot more manageable for the client.</p>
 
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
-</code></pre>
+<h3>Field names</h3>
 
-<h2>this is a sample header</h2>
+<p>By choosing to use a simple comma-separated list of field names, there is a chance of ambiguity, where there are different fields with the same name.</p>
 
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
+<h2>Conclusion</h2>
 
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-6/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-6</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-
-<p>Some code:</p>
-
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
-</code></pre>
-
-<!-- More -->
-
-
-<h2>Some more code</h2>
-
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
-</code></pre>
-
-<h2>this is a sample header</h2>
-
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-5/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-5</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-
-<p>Some code:</p>
-
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
-</code></pre>
-
-<!-- More -->
-
-
-<h2>Some more code</h2>
-
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
-</code></pre>
-
-<h2>this is a sample header</h2>
-
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-4/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-4</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-
-<p>Some code:</p>
-
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
-</code></pre>
-
-<!-- More -->
-
-
-<h2>Some more code</h2>
-
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
-</code></pre>
-
-<h2>this is a sample header</h2>
-
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-3/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-3</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-
-<p>Some code:</p>
-
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
-</code></pre>
-
-<!-- More -->
-
-
-<h2>Some more code</h2>
-
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
-</code></pre>
-
-<h2>this is a sample header</h2>
-
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-2/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-2</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-
-<p>Some code:</p>
-
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
-</code></pre>
-
-<!-- More -->
-
-
-<h2>Some more code</h2>
-
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
-</code></pre>
-
-<h2>this is a sample header</h2>
-
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-16/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-16</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-
-<p>Some code:</p>
-
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
-</code></pre>
-
-<!-- More -->
-
-
-<h2>Some more code</h2>
-
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
-</code></pre>
-
-<h2>this is a sample header</h2>
-
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-15/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-15</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-
-<p>Some code:</p>
-
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
-</code></pre>
-
-<!-- More -->
-
-
-<h2>Some more code</h2>
-
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
-</code></pre>
-
-<h2>this is a sample header</h2>
-
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-14/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-14</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-
-<p>Some code:</p>
-
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
-</code></pre>
-
-<!-- More -->
-
-
-<h2>Some more code</h2>
-
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
-</code></pre>
-
-<h2>this is a sample header</h2>
-
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-13/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-13</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-
-<p>Some code:</p>
-
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
-</code></pre>
-
-<!-- More -->
-
-
-<h2>Some more code</h2>
-
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
-</code></pre>
-
-<h2>this is a sample header</h2>
-
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-12/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-12</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-
-<p>Some code:</p>
-
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
-</code></pre>
-
-<!-- More -->
-
-
-<h2>Some more code</h2>
-
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
-</code></pre>
-
-<h2>this is a sample header</h2>
-
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-11/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-11</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-
-<p>Some code:</p>
-
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
-</code></pre>
-
-<!-- More -->
-
-
-<h2>Some more code</h2>
-
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
-</code></pre>
-
-<h2>this is a sample header</h2>
-
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-10/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-10</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-
-<p>Some code:</p>
-
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
-</code></pre>
-
-<!-- More -->
-
-
-<h2>Some more code</h2>
-
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
-</code></pre>
-
-<h2>this is a sample header</h2>
-
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-1/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii-1</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-
-<p>Some code:</p>
-
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
-</code></pre>
-
-<!-- More -->
-
-
-<h2>Some more code</h2>
-
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
-</code></pre>
-
-<h2>this is a sample header</h2>
-
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Of Lorems and Ipsii]]></title>
-    <link href="http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii/"/>
-    <updated>2014-12-22T19:04:23-05:00</updated>
-    <id>http://lbatteau.github.io/blog/2014/12/22/of-lorems-and-ipsii</id>
-    <content type="html"><![CDATA[<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup> dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-
-<p>Some code:</p>
-
-<pre><code class="js">var hello = function (name) {
-  console.log("Hello, " + name + '.');
-}
-hello('World');   // prints 'Hello, World.' to stdout
-</code></pre>
-
-<!-- More -->
-
-
-<h2>Some more code</h2>
-
-<pre><code class="ruby">def test
-  @answer = 6*9
-  if @answer != 42  # this should never happen
-    raise "Oh no, not again."
-  else
-    print "Don't panic."
-end
-</code></pre>
-
-<h2>this is a sample header</h2>
-
-<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
-<div class="footnotes">
-<hr/>
-<ol>
-<li id="fn:1">
-<p>The footnote <a href="http://www.example.com">content</a>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
-</ol>
-</div>
-
+<p>I&rsquo;ve presented a method to give the client more control of a REST API response by introducing <em>expandable fields</em>. I have implemented an <code>ExpandableFieldSerializer</code> that works together with an <code>ExpandableViewSetMixin</code> for the Django Rest Framework, which I will share on GitHub shortly.</p>
 ]]></content>
   </entry>
   
